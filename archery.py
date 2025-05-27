@@ -24,16 +24,20 @@ cap.set(cv2.CAP_PROP_FPS, 60)
 frame_width = int(cap.get(3))
 frame_height = int(cap.get(4))
 
+
+#Calibration variables
 calibration_points = []
 calibrating = True
 calibration_frame_count = 0
 calibration_frames = 50
 calibration_threshold = 1
 
+
+#General Game Variables
 score = 0
 arrow_released = False
 arrow_drawn = False
-arrow_position = (0, 0)
+arrow_position = (50, 50)
 arrow_velocity = 50  # Arrow speed
 arrow_direction = (-1, 0)
 target_width = 40
@@ -93,13 +97,12 @@ def calibrate_distance():
 
 # Reset Game
 def reset_game():
-    global score, arrow_released, arrow_drawn, arrow_position, target_x, target_y, next_target_move_time
-    score = 0
+    global arrow_released, arrow_drawn, arrow_position, target_x, target_y, next_target_move_time
     arrow_released = False
     arrow_drawn = False
     arrow_position = (50, 50)
-    target_x = 50
-    target_y = random.randint(50, int(480 - target_height))
+    target_x = random.randint(target_radius, boundary_x - 100)
+    target_y = random.randint(target_radius, frame_height - target_radius)
     next_target_move_time = time.time() + 7
 
 # Draw Hand Landmarks
@@ -116,11 +119,21 @@ def draw_hand_landmarks(frame, hand_landmarks):
 # Draw Arrow
 def draw_arrow(frame, position, direction):
     tip = (
-        int(position[0] - 75 * direction[0]),
-        int(position[1] - 75 * direction[1])
+        int(position[0] + 75 * direction[0]),
+        int(position[1] + 75 * direction[1])
     )
     base = (int(position[0]), int(position[1]))
     cv2.line(frame, base, tip, (0, 0, 255), 3)
+    # Optional arrowhead (triangle)
+    angle = math.atan2(direction[1], direction[0])
+    arrowhead_points = [
+        (int(tip[0] - 10 * math.cos(angle - math.pi / 6)),
+         int(tip[1] - 10 * math.sin(angle - math.pi / 6))),
+        (int(tip[0] - 10 * math.cos(angle + math.pi / 6)),
+         int(tip[1] - 10 * math.sin(angle + math.pi / 6))),
+    ]
+    cv2.line(frame, tip, arrowhead_points[0], (0, 0, 255), 3)
+    cv2.line(frame, tip, arrowhead_points[1], (0, 0, 255), 3)
 
 # Update Target Position
 def update_target_position():
@@ -157,7 +170,7 @@ while cap.isOpened():
             index_tip = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP]
             thumb_tip = hand_landmarks.landmark[mp_hands.HandLandmark.THUMB_TIP]
 
-            # Calculate distance
+            # Calculate distance between index tip and thumb tip
             distance = math.dist(
                 (index_tip.x * frame_width, index_tip.y * frame_height),
                 (thumb_tip.x * frame_width, thumb_tip.y * frame_height)
@@ -166,15 +179,27 @@ while cap.isOpened():
             if distance < calibration_threshold / 2:
                 arrow_drawn = True
                 # Update arrow position to follow the index finger when drawing
-                arrow_position = (index_tip.x * frame_width, index_tip.y * frame_height)  # **Updated**
-            elif arrow_drawn and distance >= calibration_threshold / 2:
+                arrow_position = (index_tip.x * frame_width, index_tip.y * frame_height)
+                draw_arrow(frame, arrow_position, arrow_direction)  # Draw arrow while drawing
+
+            elif arrow_drawn and distance >= calibration_threshold / 2 and not arrow_released:
                 arrow_released = True
-                arrow_drawn = False  # Prevent retriggering release
-                # Set the direction relative to the thumb and index positions
-                arrow_direction = (
-                    -1,  # Horizontal shooting (to the left)
-                    0  # Keep vertical movement flat for now
-                ) 
+                arrow_drawn = False
+
+                # Use index finger direction as arrow direction
+                index_mcp = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_MCP]
+
+                dx = (index_tip.x - index_mcp.x) * frame_width
+                dy = (index_tip.y - index_mcp.y) * frame_height
+
+                length = math.sqrt(dx*dx + dy*dy)
+                if length != 0:
+                    dir_x = dx / length
+                    dir_y = dy / length
+                else:
+                    dir_x, dir_y = -1, 0  # Default left direction if zero length
+
+                arrow_direction = (dir_x, dir_y)
 
     # Update target position
     update_target_position()
@@ -197,7 +222,8 @@ while cap.isOpened():
             reset_game()
 
         # Reset arrow if out of bounds
-        if arrow_position[0] > frame_width or arrow_position[1] < 0 or arrow_position[1] > frame_height:
+        if (arrow_position[0] > frame_width or arrow_position[0] < 0 or
+            arrow_position[1] < 0 or arrow_position[1] > frame_height):
             arrow_released = False
             arrow_drawn = False
             arrow_position = (50, 50)
