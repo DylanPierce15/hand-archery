@@ -49,6 +49,8 @@ Open your hand to release the arrow towards the target.
 
 Hit the moving green target to increase your score.
 
+---
+
 📁 Folder Structure
 hand-archery-game/
 ├── README.md
