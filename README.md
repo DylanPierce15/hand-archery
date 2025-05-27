@@ -55,7 +55,7 @@ Hit the moving green target to increase your score.
 hand-archery-game/
 ├── README.md
 ├── .gitignore
-├── LICSENSE
+├── LICENSE
 ├── archery.py
 
 ---
