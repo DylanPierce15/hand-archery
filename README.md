@@ -7,7 +7,7 @@ The game uses your webcam to detect hand gestures to draw and release arrows, ai
 
 ## 🎯 Overview
 
-This game leverages MediaPipe’s hand tracking to detect when you “draw” the bow by closing your hand and release the arrow by opening your hand. The goal is to hit a randomly generated target that appears on the screen and score points.
+This game leverages MediaPipe’s hand tracking to detect when you “draw” the bow by closing your pinching your index finger and thumb and release the arrow by opening your hand. The goal is to hit a randomly generated target that appears on the screen and score points.
 
 ---
 
